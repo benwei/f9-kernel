@@ -6,10 +6,17 @@ F9 microkernel is written by:
   Zhe-An Lin <xq5530303@gmail.com>
   Chao-Hong Chen <DreamLinuxer@gmail.com>
   Ahmed Ammar <aammar@genesi-usa.com>
+  Zong-Yuan Chow <slp-baby@hotmail.com>
+  Jeff Liaw <rampant1018@gmail.com>
+  Louie Lu <louie.lu@hopebaytech.com>
+
+F9 was derived from l4xpresso project developed by
+  Sergey Klyaus <myautneko@gmail.com>, ITMO University
+  (MIT License)
 
 The external parts were copyrighted by:
-  University of California
-  Karlsruhe University
-  University of New South Wales
-  Volkmar Uhlig, IBM Corporation
-  Rich Felker
+  University of California (FreeBSD)
+  Karlsruhe University (L4Ka)
+  University of New South Wales (L4Ka, OKL4)
+  Volkmar Uhlig, IBM Corporation (L4Ka)
+  Rich Felker (musl-libc)

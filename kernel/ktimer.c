@@ -53,7 +53,7 @@ static void ktimer_enable(uint32_t delta)
 		ktimer_enabled = 1;
 
 #if defined(CONFIG_KDB) && \
-	defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
+    defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
 		tickless_verify_start(ktimer_now, ktimer_delta);
 #endif	/* CONFIG_KDB */
 	}
@@ -72,7 +72,7 @@ void __ktimer_handler(void)
 			ktimer_time = ktimer_delta = 0;
 
 #if defined(CONFIG_KDB) && \
-	defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
+    defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
 			tickless_verify_stop(ktimer_now);
 #endif	/* CONFIG_KDB */
 
@@ -115,13 +115,13 @@ void kdb_show_tickless_verify(void)
 
 static void ktimer_event_recalc(ktimer_event_t* event, uint32_t new_delta)
 {
-	while (event) {
+	if (event) {
 		dbg_printf(DL_KTIMER,
 		           "KTE: Recalculated event %p D=%d -> %d\n",
 		           event, event->delta, event->delta - new_delta);
 		event->delta -= new_delta;
-		event = event->next;
 	}
+
 }
 
 int ktimer_event_schedule(uint32_t ticks, ktimer_event_t *kte)
@@ -210,24 +210,32 @@ int ktimer_event_schedule(uint32_t ticks, ktimer_event_t *kte)
 	return 0;
 }
 
-int ktimer_event_create(uint32_t ticks, ktimer_event_handler_t handler, void *data)
+ktimer_event_t *ktimer_event_create(uint32_t ticks,
+	                                ktimer_event_handler_t handler,
+	                                void *data)
 {
-	ktimer_event_t *kte;
+	ktimer_event_t *kte = NULL;
 
 	if (!handler)
-		return -1;
+		goto ret;
 
 	kte = (ktimer_event_t *) ktable_alloc(&ktimer_event_table);
 
 	/* No available slots */
 	if (kte == NULL)
-		return -1;
+		goto ret;
 
 	kte->next = NULL;
 	kte->handler = handler;
 	kte->data = data;
 
-	return ktimer_event_schedule(ticks, kte);
+	if (ktimer_event_schedule(ticks, kte) == -1) {
+		ktable_free(&ktimer_event_table, kte);
+		kte = NULL;
+	}
+
+ret:
+	return kte;
 }
 
 void ktimer_event_handler()
@@ -339,7 +347,7 @@ void ktimer_enter_tickless()
 		init_systick(reload, CONFIG_KTIMER_HEARTBEAT);
 
 #if defined(CONFIG_KDB) && \
-	defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
+    defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
 		tickless_verify_count();
 #endif
 	}
@@ -365,7 +373,7 @@ void ktimer_enter_tickless()
 			}
 
 #if defined(CONFIG_KDB) && \
-	defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
+    defined(CONFIG_KTIMER_TICKLESS) && defined(CONFIG_KTIMER_TICKLESS_VERIFY)
 			tickless_verify_count_int();
 #endif
 		}

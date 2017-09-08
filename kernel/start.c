@@ -1,4 +1,4 @@
-/* Copyright (c) 2013 The F9 Microkernel Project. All rights reserved.
+/* Copyright (c) 2013, 2014 The F9 Microkernel Project. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -25,11 +25,12 @@
 #include <ksym.h>
 #include <init_hook.h>
 #include <lib/stdio.h>
+#include <lib/string.h>
 
 static char banner[] =
 	"\n"
 	"====================================================\n"
-	"      Copyright(C) 2013 The F9 Microkernel Project  \n"
+	" Copyright(C) 2013-2014 The F9 Microkernel Project  \n"
 	"====================================================\n"
 	"Git head: " GIT_HEAD "\n"
 	"Host: " MACH_TYPE "\n"
@@ -71,39 +72,30 @@ int main(void)
 	return 0;
 }
 
-static inline void init_zero_seg(uint32_t *dst, uint32_t *dst_end)
-{
-	while (dst < dst_end)
-		*dst++ = 0;
-}
-
-static inline void init_copy_seg(uint32_t *src, uint32_t *dst, uint32_t *dst_end)
-{
-	while (dst < dst_end)
-		*dst++ = *src++;
-}
-
 void __l4_start(void)
 {
 	run_init_hook(INIT_LEVEL_EARLIEST);
 
 #ifndef CONFIG_LOADER
 	/* Copy data segments */
-	init_copy_seg(&kernel_text_end,
-	              &kernel_data_start, &kernel_data_end);
+	memcpy(&kernel_data_start, &kernel_text_end,
+	       (&kernel_data_end - &kernel_data_start) * sizeof(uint32_t));
 	/* DATA (ROM) -> DATA (RAM) */
-	init_copy_seg(&user_text_flash_start,
-	              &user_text_start, &user_text_end);
+	memcpy(&user_text_start, &user_text_flash_start,
+	       (&user_text_end - &user_text_start) * sizeof(uint32_t));
 	/* USER TEXT (ROM) -> USER TEXT (RAM) */
-	init_copy_seg(&user_text_flash_end,
-	              &user_data_start, &user_data_end);
+	memcpy(&user_data_start, &user_text_flash_end,
+	       (&user_data_end - &user_data_start) * sizeof(uint32_t));
 	/* USER DATA (ROM) -> USER DATA (RAM) */
 #endif
 
 	/* Fill bss with zeroes */
-	init_zero_seg(&bss_start, &bss_end);
-	init_zero_seg(&kernel_ahb_start, &kernel_ahb_end);
-	init_zero_seg(&user_bss_start, &user_bss_end);
+	memset(&bss_start, 0,
+	       (&bss_end - &bss_start) * sizeof(uint32_t));
+	memset(&kernel_ahb_start, 0,
+	       (&bss_end - &bss_start) * sizeof(uint32_t));
+	memset(&user_bss_start, 0,
+	       (&user_bss_end - & user_bss_start) * sizeof(uint32_t));
 
 	sys_clock_init();
 

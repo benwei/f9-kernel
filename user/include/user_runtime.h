@@ -7,6 +7,7 @@
 #define USER_RUNTIME_H
 
 #include <l4/types.h>
+#include <l4/ipc.h>
 
 typedef struct user_struct user_struct;
 typedef void (*user_entry)(user_struct *);
@@ -43,9 +44,11 @@ struct user_struct {
 	};	\
 	static void __USER_TEXT _user_entry_##_name(void)	\
 	{	\
-		_entry(&_user_struct_##_name);	\
+		pager_thread(&_user_struct_##_name, _entry);  \
 		while (1)	\
 			L4_Sleep(L4_Never);	\
 	}
+
+#include <l4/pager.h>
 
 #endif /* USER_RUNTIME_H */

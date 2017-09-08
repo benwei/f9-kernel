@@ -7,6 +7,7 @@
 #include <l4/kip.h>
 #include <l4/utcb.h>
 #include <l4/ipc.h>
+#include <l4io.h>
 #include <types.h>
 #include <user_runtime.h>
 #include <l4io.h>
@@ -69,6 +70,9 @@ static void __USER_TEXT start_thread(L4_ThreadId_t t, L4_Word_t ip,
 	L4_MsgAppendWord(&msg, ip);
 	L4_MsgAppendWord(&msg, sp);
 	L4_MsgAppendWord(&msg, stack_size);
+	L4_MsgAppendWord(&msg, 0);
+	L4_MsgAppendWord(&msg, 0);
+
 	L4_MsgLoad(&msg);
 
 	L4_Send(t);
@@ -107,9 +111,9 @@ void __USER_TEXT __root_thread(kip_t *kip_ptr, utcb_t *utcb_ptr)
 			} else {
 				L4_Map(tid, (L4_Word_t)free_mem, fpage->size);
 				fpage->base = (L4_Word_t)free_mem;
+				free_mem += fpage->size;
 			}
 
-			free_mem += fpage->size;
 			fpage++;
 		}
 

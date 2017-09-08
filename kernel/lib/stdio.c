@@ -30,9 +30,9 @@ static void __l4_puts_x(char *str, int width, const char pad)
 	}
 }
 
-#define hexchars(x) \
-	(((x) < 10) ? \
-		('0' + (x)) : \
+#define hexchars(x)			\
+	(((x) < 10) ?			\
+		('0' + (x)) :		\
 	 	('a' + ((x) - 10)))
 
 static int __l4_put_hex(const uint32_t val, int width, const char pad)
@@ -83,8 +83,8 @@ void __l4_printf(char *fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-
 	__l4_vprintf(fmt, va);
+	va_end(va);
 }
 
 void __l4_vprintf(char *fmt, va_list va)

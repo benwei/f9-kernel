@@ -6,10 +6,14 @@
 CFLAGS_FPU-$(CONFIG_FPU) = -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 
 # CPU specific compilation flags
+ifeq (STM32_VARIANT,f1)
+CFLAGS_CPU = -mlittle-endian -mcpu=cortex-m3
+else
 CFLAGS_CPU = -mlittle-endian -mcpu=cortex-m4
+endif
 CFLAGS_CPU += -mthumb -mthumb-interwork -Xassembler -mimplicit-it=thumb
 CFLAGS_CPU += -mno-sched-prolog -mno-unaligned-access
-CFLAGS_CPU += -Wdouble-promotion -fsingle-precision-constant -fshort-double
+CFLAGS_CPU += -Wdouble-promotion -fsingle-precision-constant
 CFLAGS_CPU += $(CFLAGS_FPU-y)
 
 platform-y = \

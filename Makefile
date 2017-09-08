@@ -14,7 +14,13 @@ unconfigured_error:
 	@$(MAKE) -s UNKNOWN 2>/dev/null
 endif
 
+ifeq "$(CONFIG_BOARD_STM32F429DISCOVERY)" "y"
+BOARD ?= discoveryf429
+else ifeq "$(CONFIG_BOARD_STM32P103)" "y"
+BOARD ?= stm32p103
+else
 BOARD ?= discoveryf4
+endif
 
 PROJECT ?= f9
 
@@ -23,6 +29,10 @@ out ?= build/$(BOARD)
 
 # output directory for host build targets
 out_host ?= build/host
+
+# FIXME: use smarter way to detect QEMU
+# qemu directory location
+QEMU_DIR ?= ../qemu_stm32/arm-softmmu/
 
 includes-user = user/include
 # toolchain specific configurations; common cflags and ldflags
@@ -36,6 +46,7 @@ includes = \
 	board/$(BOARD) \
 	include \
 	include/platform \
+	.\
 $(eval BOARD_$(BOARD)=y)
 
 # Kconfig files to use
@@ -43,13 +54,14 @@ KCONFIG_FILES = \
 	platform/Kconfig \
 	kernel/Kconfig \
 	loader/Kconfig \
-	user/apps/Kconfig
+	user/Kconfig
 
 # Read configurations about system features and characteristics
 include mk/config.mk
 
 # Get build configuration from sub-directories
 include platform/$(CHIP)/build.mk
+include platform/$(PLATFORM)-common/build.mk
 include platform/build.mk
 include kernel/lib/build.mk
 include kernel/build.mk
@@ -64,6 +76,7 @@ objs_from_dir = $(foreach obj, $($(2)-y), \
 
 # Get all sources to build
 all-y += $(call objs_from_dir,platform/$(CHIP),chip)
+all-y += $(call objs_from_dir,platform/$(PLATFORM)-common,platform-common)
 all-y += $(call objs_from_dir,board/$(BOARD),board)
 all-y += $(call objs_from_dir,platform,platform)
 all-y += $(call objs_from_dir,kernel/lib,kernel-lib)
@@ -82,6 +95,7 @@ dirs = \
 	kernel/lib \
 	kernel \
 	platform/$(CHIP) \
+	platform/$(PLATFORM)-common \
 	board/$(BOARD) \
 	user \
 	loader \

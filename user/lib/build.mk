@@ -5,3 +5,4 @@
 user-lib-dirs = \
 	l4 \
 	io \
+	libposix \

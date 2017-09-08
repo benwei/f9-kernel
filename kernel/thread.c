@@ -92,7 +92,6 @@ extern tcb_t *caller;
  */
 static int thread_map_search(l4_thread_t globalid, int from, int to)
 {
-	int mid = 0;
 	int tid = GLOBALID_TO_TID(globalid);
 
 	/* Upper bound if beginning of array */
@@ -100,10 +99,10 @@ static int thread_map_search(l4_thread_t globalid, int from, int to)
 		return from;
 
 	while (from <= to) {
-		mid = from + (to - from) / 2;
-
 		if ((to - from) <= 1)
 			return to;
+
+		int mid = from + (to - from) / 2;
 
 		if (GLOBALID_TO_TID(thread_map[mid]->t_globalid) > tid)
 			to = mid;
@@ -158,9 +157,7 @@ static void thread_map_delete(l4_thread_t globalid)
  */
 tcb_t *thread_init(l4_thread_t globalid, utcb_t *utcb)
 {
-	tcb_t *thr;
-
-	thr = (tcb_t *) ktable_alloc(&thread_table);
+	tcb_t *thr = (tcb_t *) ktable_alloc(&thread_table);
 
 	if (!thr) {
 		set_caller_error(UE_OUT_OF_MEM);
@@ -182,6 +179,8 @@ tcb_t *thread_init(l4_thread_t globalid, utcb_t *utcb)
 	thr->utcb = utcb;
 	thr->state = T_INACTIVE;
 
+	thr->timeout_event = 0;
+
 	dbg_printf(DL_THREAD, "T: New thread: %t @[%p] \n", globalid, thr);
 
 	return thr;
@@ -196,10 +195,7 @@ void thread_deinit(tcb_t *thr)
 /* Called from user thread */
 tcb_t *thread_create(l4_thread_t globalid, utcb_t *utcb)
 {
-	tcb_t *thr;
-	int id;
-
-	id = GLOBALID_TO_TID(globalid);
+	int id = GLOBALID_TO_TID(globalid);
 
 	assert(caller != NULL);
 
@@ -210,7 +206,7 @@ tcb_t *thread_create(l4_thread_t globalid, utcb_t *utcb)
 		return NULL;
 	}
 
-	thr = thread_init(globalid, utcb);
+	tcb_t *thr = thread_init(globalid, utcb);
 	thr->t_parent = caller;
 
 	/* Place under */
@@ -297,7 +293,8 @@ void thread_space(tcb_t *thr, l4_thread_t spaceid, utcb_t *utcb)
 		map_area(caller->as, thr->as, (memptr_t) utcb,
 		         sizeof(utcb_t), GRANT, thread_ispriviliged(caller));
 	else
-		map_area(thr->as, thr->as, (memptr_t) utcb, sizeof(utcb_t), GRANT, 1);
+		map_area(thr->as, thr->as, (memptr_t) utcb,
+		         sizeof(utcb_t), GRANT, 1);
 }
 
 void thread_free_space(tcb_t *thr)
@@ -306,7 +303,7 @@ void thread_free_space(tcb_t *thr)
 	as_destroy(thr->as);
 }
 
-void thread_init_ctx(void *sp, void *pc, tcb_t *thr)
+void thread_init_ctx(void *sp, void *pc, void *regs, tcb_t *thr)
 {
 	/* Reserve 8 words for fake context */
 	sp -= RESERVED_STACK;
@@ -318,23 +315,28 @@ void thread_init_ctx(void *sp, void *pc, tcb_t *thr)
 	if (GLOBALID_TO_TID(thr->t_globalid) >= THREAD_ROOT) {
 		thr->ctx.ret = 0xFFFFFFFD;
 		thr->ctx.ctl = 0x3;
-
-		((uint32_t *) sp)[REG_R0] = (uint32_t) &kip;
-		((uint32_t *) sp)[REG_R1] = (uint32_t) thr->utcb;
 	} else {
 		thr->ctx.ret = 0xFFFFFFF9;
 		thr->ctx.ctl = 0x0;
-
-		((uint32_t *) sp)[REG_R0] = 0x0;
-		((uint32_t *) sp)[REG_R1] = 0x0;
 	}
 
-	((uint32_t *) sp)[REG_R2] = 0x0;
-	((uint32_t *) sp)[REG_R3] = 0x0;
+	if (regs == NULL) {
+		((uint32_t *) sp)[REG_R0] = 0x0;
+		((uint32_t *) sp)[REG_R1] = 0x0;
+		((uint32_t *) sp)[REG_R2] = 0x0;
+		((uint32_t *) sp)[REG_R3] = 0x0;
+	} else {
+		((uint32_t *) sp)[REG_R0] = ((uint32_t *) regs)[0];
+		((uint32_t *) sp)[REG_R1] = ((uint32_t *) regs)[1];
+		((uint32_t *) sp)[REG_R2] = ((uint32_t *) regs)[2];
+		((uint32_t *) sp)[REG_R3] = ((uint32_t *) regs)[3];
+	}
+
 	((uint32_t *) sp)[REG_R12] = 0x0;
 	((uint32_t *) sp)[REG_LR] = 0xFFFFFFFF;
 	((uint32_t *) sp)[REG_PC] = (uint32_t) pc;
 	((uint32_t *) sp)[REG_xPSR] = 0x1000000; /* Thumb bit on */
+
 }
 
 /* Kernel has no fake context, instead of that we rewind
@@ -389,7 +391,7 @@ void thread_switch(tcb_t *thr)
 	current_utcb = thr->utcb;
 	if (current->as)
 		as_setup_mpu(current->as, current->ctx.sp,
-		             ((uint32_t*)current->ctx.sp)[REG_PC],
+		             ((uint32_t *) current->ctx.sp)[REG_PC],
 		             current->stack_base, current->stack_size);
 }
 
@@ -400,7 +402,6 @@ void thread_switch(tcb_t *thr)
 static tcb_t *thread_select(tcb_t *parent)
 {
 	tcb_t *thr = parent->t_child;
-
 	if (thr == NULL)
 		return NULL;
 
@@ -466,7 +467,8 @@ void kdb_dump_threads(void)
 	           "type", "global", "local", "state", "parent");
 
 	for_each_in_ktable(thr, idx, (&thread_table)) {
-		dbg_printf(DL_KDB, "%5s %t %t %6s %t\n", kdb_get_thread_type(thr),
+		dbg_printf(DL_KDB, "%5s %t %t %6s %t\n",
+		           kdb_get_thread_type(thr),
 		           thr->t_globalid, thr->t_localid, state[thr->state],
 		           (thr->t_parent) ? thr->t_parent->t_globalid : 0);
 	}

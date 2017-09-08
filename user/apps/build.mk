@@ -7,5 +7,15 @@ else
 user-apps-dirs = \
 	l4test \
 	pingpong
-endif
 
+
+ifdef CONFIG_EXTI_INTERRUPT_TEST
+user-apps-dirs += \
+	irq_test
+else
+ifdef CONFIG_BOARD_STM32F429DISCOVERY
+user-apps-dirs += \
+	lcd_test
+endif
+endif
+endif

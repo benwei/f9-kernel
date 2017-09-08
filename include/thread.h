@@ -42,6 +42,8 @@ typedef enum {
 	THREAD_IDLE,
 	THREAD_KERNEL,
 	THREAD_ROOT,
+	THREAD_INTERRUPT,
+	THREAD_IRQ_REQUEST,
 	THREAD_LOG,
 	THREAD_SYS	= 16,				/* Systembase */
 	THREAD_USER	= CONFIG_INTR_THREAD_MAX	/* Userbase */
@@ -92,6 +94,7 @@ struct tcb {
 	struct tcb *t_parent;
 	struct tcb *t_child;
 
+	uint32_t timeout_event;
 };
 typedef struct tcb tcb_t;
 
@@ -104,7 +107,7 @@ tcb_t *thread_create(l4_thread_t globalid, utcb_t *utcb);
 void thread_destroy(tcb_t *thr);
 void thread_space(tcb_t *thr, l4_thread_t spaceid, utcb_t *utcb);
 void thread_free_space(tcb_t *thr);
-void thread_init_ctx(void *sp, void *pc, tcb_t *thr);
+void thread_init_ctx(void *sp, void *pc, void *rx, tcb_t *thr);
 void thread_init_kernel_ctx(void *sp, tcb_t *thr);
 void thread_switch(tcb_t *thr);
 

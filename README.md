@@ -81,16 +81,20 @@ in the `LICENSE` file.
 Quick Start
 ===========
 
-The current hardware board F9 Microkernel supports is [STM32F4DISCOVERY](http://www.st.com/web/en/catalog/tools/FM116/SC959/SS1532/PF252419)
-based on ARM Cortex-M4F core, but F9 should work well on any STM32F40x
+F9 Microkernel supports the following boards:
+* [STM32F4DISCOVERY](http://www.st.com/web/en/catalog/tools/FM116/SC959/SS1532/PF252419)
+* [32F429IDISCOVERY](http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/PF259090)
+  - Both are based on ARM Cortex-M4F core, but F9 should work well on any STM32F40x/STM32F429/STM32F439
 microcontroller.
+* [STM32-P103](https://www.olimex.com/Products/ARM/ST/STM32-P103/)
+  - Powered by Cortex-M3 based microcontroller, STM32F103RBT6
 
 Building F9 Microkernel requires an arm-none-eabi- toolchain with Cortex-M4F support. The known working toolchains are as following
 * [Sourcery CodeBench](http://www.mentor.com/embedded-software/sourcery-tools/sourcery-codebench/editions/lite-edition/)
   - ARM Processors: EABI Release
-  - Verified versions: arm-2012.03, arm-2013.05, arm-2013.11
+  - Verified versions: arm-2012.03, arm-2013.05, arm-2013.11, arm-2014.05
 * [GNU Tools for ARM Embedded Processors](https://launchpad.net/gcc-arm-embedded)
-  - Verified versions: 4.8-2013-q4-major
+  - Verified versions: 4.8-2013-q4-major, 4.8-2014q2-update
 
 Other build dependency includes: (for Debian/Ubuntu)
 * libncurses5-dev
@@ -128,10 +132,19 @@ or USART1 of STM32F4DISCOVERY depending on the selected option when you execute
 * USART2: PA2 (TX), PA3  (RX)
 * USART1: PA9 (TX), PX10 (RX)
 
+For 32F429IDISCOVERY, the pins are as follows:
+* USART4: PC11 (TX), PC10 (RX) (default config)
+* USART2: PD5 (TX), PD6 (RX)
+* USART1: PA9 (TX), PA10 (RX)
+
 You can established serial connection with the board using a serial to USB
-converter:
+converter (for STM32F4DISCOVERY):
 * USB2TTL RX ---> PA0 / PA2 / PA9
 * USB2TTL TX ---> PA1 / PA3 / PA10
+
+or (for 32F429IDISCOVERY):
+* USB2TTL RX ---> PC11 / PD5 / PA9
+* USB2TTL TX ---> PC10 / PD6 / PA10
 
 Select the appropriate terminal emulator and configure it for 115200 baud,
 8 data bits, no parity, one stop bit. For GNU/Linux, program `screen` can be

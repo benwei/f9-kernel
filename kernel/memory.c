@@ -59,7 +59,7 @@ static mempool_t memmap[] = {
 		MP_UR | MP_UW | MP_MEMPOOL | MP_MAP_ALWAYS, MPT_USER_DATA),
 	DECLARE_MEMPOOL_2("UBSS",  user_bss,
 		MP_UR | MP_UW | MP_MEMPOOL  | MP_MAP_ALWAYS, MPT_USER_DATA),
-	DECLARE_MEMPOOL("MEM0",  &user_bss_end, 0x2001c000,
+	DECLARE_MEMPOOL("MEM0",  &mem0_start, 0x2001c000,
 		MP_UR | MP_UW | MP_SRAM, MPT_AVAILABLE),
 #ifdef CONFIG_BITMAP_BITBAND
 	DECLARE_MEMPOOL("KBITMAP",  &bitmap_bitband_start, &bitmap_bitband_end,
@@ -68,11 +68,13 @@ static mempool_t memmap[] = {
 	DECLARE_MEMPOOL("KBITMAP",  &bitmap_start, &bitmap_end,
 		MP_KR | MP_KW | MP_NO_FPAGE, MPT_KERNEL_DATA),
 #endif
-	DECLARE_MEMPOOL("MEM1",   &kernel_ahb_end, 0x10010000,
+#ifndef CONFIG_BOARD_STM32P103
+	DECLARE_MEMPOOL("MEM1",   &mem1_start, 0x10010000,
 		MP_UR | MP_UW | MP_AHB_RAM, MPT_AVAILABLE),
+#endif
 	DECLARE_MEMPOOL("APB1DEV", 0x40000000, 0x40007800,
 		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
-	DECLARE_MEMPOOL("APB2_1DEV", 0x40010000, 0x40013400,
+	DECLARE_MEMPOOL("APB2_1DEV", 0x40010000, 0x40014c00,
 		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
 	DECLARE_MEMPOOL("APB2_2DEV", 0x40014000, 0x40014c00,
 		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
@@ -84,6 +86,18 @@ static mempool_t memmap[] = {
 		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
 	DECLARE_MEMPOOL("AHB3DEV", 0x60000000, 0xA0001000,
 		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+#ifdef CONFIG_BOARD_STM32F429DISCOVERY
+	DECLARE_MEMPOOL("APB2_3DEV", 0x40015000, 0x40015c00,
+		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+	DECLARE_MEMPOOL("APB2_4DEV", 0x40016800, 0x40017900,
+		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+	DECLARE_MEMPOOL("CR_PLLSAION_BB", 0x42470000, 0x42470c00,
+		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+	DECLARE_MEMPOOL("LCD_FRAME_BUFFER_1", 0xD0000000, 0xD00A0000,
+		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+	DECLARE_MEMPOOL("LCD_FRAME_BUFFER_2", 0xD00A0000, 0xD0140000,
+		MP_UR | MP_UW | MP_DEVICES, MPT_DEVICES),
+#endif
 };
 
 DECLARE_KTABLE(as_t, as_table, CONFIG_MAX_ADRESS_SPACES);
@@ -110,9 +124,7 @@ memptr_t mempool_align(int mpid, memptr_t addr)
 
 int mempool_search(memptr_t base, size_t size)
 {
-	int i;
-
-	for (i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
+	for (int i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
 		if ((memmap[i].start <= base) &&
 		    (memmap[i].end >= (base + size))) {
 			return i;
@@ -131,7 +143,7 @@ mempool_t *mempool_getbyid(int mpid)
 
 void memory_init()
 {
-	int i = 0, j = 0;
+	int j = 0;
 	uint32_t *shcsr = (uint32_t *) 0xE000ED24;
 
 	fpages_init();
@@ -141,7 +153,7 @@ void memory_init()
 	mem_desc = (kip_mem_desc_t *) kip_extra;
 
 	/* Initialize mempool table in KIP */
-	for (i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
+	for (int i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
 		switch (memmap[i].tag) {
 		case MPT_USER_DATA:
 		case MPT_USER_TEXT:
@@ -174,7 +186,7 @@ INIT_HOOK(memory_init, INIT_LEVEL_KERNEL_EARLY);
 void as_setup_mpu(as_t *as, memptr_t sp, memptr_t pc,
                   memptr_t stack_base, size_t stack_size)
 {
-	fpage_t *mpu[8] = {NULL};
+	fpage_t *mpu[8] = { NULL };
 	fpage_t *fp;
 	int mpu_first_i;
 	int i, j;
@@ -286,9 +298,7 @@ void as_setup_mpu(as_t *as, memptr_t sp, memptr_t pc,
 
 void as_map_user(as_t *as)
 {
-	int i;
-
-	for (i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
+	for (int i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
 		switch (memmap[i].tag) {
 		case MPT_USER_DATA:
 		case MPT_USER_TEXT:
@@ -302,9 +312,7 @@ void as_map_user(as_t *as)
 
 void as_map_ktext(as_t *as)
 {
-	int i;
-
-	for (i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
+	for (int i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
 		if (memmap[i].tag == MPT_KERNEL_TEXT) {
 			assign_fpages(as, memmap[i].start,
 			              (memmap[i].end - memmap[i].start));
@@ -486,15 +494,14 @@ static char *kdb_mempool_prop(mempool_t *mp)
 
 void kdb_dump_mempool(void)
 {
-	int i = 0;
-
 	dbg_printf(DL_KDB,
-	           "%10s %10s [%8s:%8s] %10s\n",
-	           "NAME", "SIZE", "START", "END", "FLAGS");
+	           "%2s %20s %10s [%8s:%8s] %10s\n",
+	           "ID", "NAME", "SIZE", "START", "END", "FLAGS");
 
-	for (i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
+	for (int i = 0; i < sizeof(memmap) / sizeof(mempool_t); ++i) {
 		dbg_printf(DL_KDB,
-		           "%10s %10d [%p:%p] %10s\n",
+		           "%2d %20s %10d [%p:%p] %10s\n",
+		           i,
 		           memmap[i].name, (memmap[i].end - memmap[i].start),
 		           memmap[i].start, memmap[i].end,
 		           kdb_mempool_prop(&(memmap[i])));
